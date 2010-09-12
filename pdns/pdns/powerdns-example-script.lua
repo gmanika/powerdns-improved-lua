@@ -52,3 +52,18 @@ function nxdomain ( remoteip, domain, qtype )
 		return -1, ret
 	end
 end
+
+
+function postresolve ( remoteip, domain, qtype, results)
+	print ("postresolve called for: ", remoteip, getlocaladdress(), domain, qtype)
+	evil = "10.66.6.1"
+	safe = "64.233.163.104"
+	for i, r in ipairs(results) do
+		if r['content'] == evil
+		then
+			ret = {}
+			ret[1]={qtype=pdns.A, content=safe, ttl=3600}
+			return 0, ret
+	end
+	return -1, {}
+end

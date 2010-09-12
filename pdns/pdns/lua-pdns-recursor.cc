@@ -225,14 +225,9 @@ bool PowerDNSLua::passthrough(const string& func, const ComboAddress& remote, co
 
   int stacksize = 3; /* change this if you changed something above */
 
-// The incantation below builds a numerically-indexed array of responses, which are themselves
-// arrays.
-// This is equivalent to
-// a = {}
-// a[1] = {"qtype": whatever, "content": whatever, "ttl": whatever }
-// ...
 
   if (ret.size()) {
+    // Builds a numerically-indexed array of Lua "ret" tables
     lua_newtable(d_lua);
     int index = 1;
     for(vector<DNSResourceRecord>::const_iterator i=ret.begin(); i!=ret.end(); ++i) {
@@ -247,6 +242,9 @@ bool PowerDNSLua::passthrough(const string& func, const ComboAddress& remote, co
         lua_rawset(d_lua, -3);
         lua_pushstring(d_lua, "ttl");
         lua_pushnumber(d_lua, i->ttl);
+        lua_rawset(d_lua, -3);
+        lua_pushstring(d_lua, "place");
+        lua_pushnumber(d_lua, (DNSResourceRecord::Place)i->d_place);
         lua_rawset(d_lua, -3);
 
 	lua_rawset(d_lua, -3);
