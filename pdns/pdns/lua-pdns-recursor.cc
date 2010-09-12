@@ -19,6 +19,11 @@ bool PowerDNSLua::preresolve(const ComboAddress& remote, const ComboAddress& loc
   return false;
 }
 
+bool PowerDNSLua::postresolve(const ComboAddress& remote, const ComboAddress& local, const string& query, const QType& qtype, vector<DNSResourceRecord>& ret, int& res, bool* variable)
+{
+  return false;
+}
+
 PowerDNSLua::~PowerDNSLua()
 {
 
@@ -166,6 +171,11 @@ bool PowerDNSLua::preresolve(const ComboAddress& remote, const ComboAddress& loc
   return passthrough("preresolve", remote, local, query, qtype, ret, res, variable);
 }
 
+bool PowerDNSLua::postresolve(const ComboAddress& remote, const ComboAddress& local,const string& query, const QType& qtype, vector<DNSResourceRecord>& ret, int& res, bool* variable)
+{
+  return passthrough("postresolve", remote, local, query, qtype, ret, res, variable);
+}
+
 bool PowerDNSLua::getFromTable(const std::string& key, std::string& value)
 {
   lua_pushstring(d_lua, key.c_str()); // 4 is now '1'
@@ -206,14 +216,29 @@ bool PowerDNSLua::passthrough(const string& func, const ComboAddress& remote, co
     lua_pop(d_lua, 1);
     return false;
   }
-  
+
+  int length = 0;
+  length = ret.size();
+
   d_local = local; 
   /* the first argument */
   lua_pushstring(d_lua,  remote.toString().c_str() );
   lua_pushstring(d_lua,  query.c_str() );
   lua_pushnumber(d_lua,  qtype.getCode() );
 
-  if(lua_pcall(d_lua,  3, 2, 0)) { // error 
+  int stacksize = 3;
+  if (length == 1) {
+    lua_newtable(d_lua);
+    lua_pushstring(d_lua, "qtype");
+    lua_pushnumber(d_lua, ret[0].qtype.getCode());
+    lua_rawset(d_lua, -3);
+    lua_pushstring(d_lua, "ip");
+    lua_pushstring(d_lua, ret[0].content.c_str());
+    lua_rawset(d_lua, -3);
+    stacksize = 4;
+  }
+
+  if(lua_pcall(d_lua,  stacksize, 2, 0)) { // error 
     string error=string("lua error in '"+func+"': ")+lua_tostring(d_lua, -1);
     lua_pop(d_lua, 1);
     throw runtime_error(error);

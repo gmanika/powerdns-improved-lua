@@ -537,6 +537,7 @@ void startDoResolve(void *p)
       g_stats.servFails++;
     }
     else {
+      (*t_pdl)->postresolve(dc->d_remote, g_listenSocketsAddresses[dc->d_socket], dc->d_mdp.d_qname, QType(dc->d_mdp.d_qtype), ret, res, &variableAnswer);
       pw.getHeader()->rcode=res;
       updateRcodeStats(res);
     
