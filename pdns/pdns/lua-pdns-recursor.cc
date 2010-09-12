@@ -217,25 +217,41 @@ bool PowerDNSLua::passthrough(const string& func, const ComboAddress& remote, co
     return false;
   }
 
-  int length = 0;
-  length = ret.size();
-
   d_local = local; 
   /* the first argument */
   lua_pushstring(d_lua,  remote.toString().c_str() );
   lua_pushstring(d_lua,  query.c_str() );
   lua_pushnumber(d_lua,  qtype.getCode() );
 
-  int stacksize = 3;
-  if (length == 1) {
+  int stacksize = 3; /* change this if you changed something above */
+
+// The incantation below builds a numerically-indexed array of responses, which are themselves
+// arrays.
+// This is equivalent to
+// a = {}
+// a[1] = {"qtype": whatever, "content": whatever, "ttl": whatever }
+// ...
+
+  if (ret.size()) {
     lua_newtable(d_lua);
-    lua_pushstring(d_lua, "qtype");
-    lua_pushnumber(d_lua, ret[0].qtype.getCode());
-    lua_rawset(d_lua, -3);
-    lua_pushstring(d_lua, "ip");
-    lua_pushstring(d_lua, ret[0].content.c_str());
-    lua_rawset(d_lua, -3);
-    stacksize = 4;
+    int index = 1;
+    for(vector<DNSResourceRecord>::const_iterator i=ret.begin(); i!=ret.end(); ++i) {
+	lua_pushnumber(d_lua, index++);
+
+        lua_newtable(d_lua);
+        lua_pushstring(d_lua, "qtype");
+        lua_pushnumber(d_lua, i->qtype.getCode());
+        lua_rawset(d_lua, -3);
+        lua_pushstring(d_lua, "content");
+        lua_pushstring(d_lua, i->content.c_str());
+        lua_rawset(d_lua, -3);
+        lua_pushstring(d_lua, "ttl");
+        lua_pushnumber(d_lua, i->ttl);
+        lua_rawset(d_lua, -3);
+
+	lua_rawset(d_lua, -3);
+    }
+    stacksize++;
   }
 
   if(lua_pcall(d_lua,  stacksize, 2, 0)) { // error 
